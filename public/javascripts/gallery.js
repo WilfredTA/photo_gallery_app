@@ -1,6 +1,6 @@
 $(function(){
 	var templates = {};
-	var photos;
+
 
 	$("script[type='text/x-handlebars']").each(function(){
 		var $templ = $(this);
@@ -11,6 +11,92 @@ $(function(){
 		var partial = $(this);
 		Handlebars.registerPartial(partial.attr("id"), partial.html())
 	});
+
+	//---------
+
+	function createSlideShow(){
+		var photos;
+		function getPhotoInformationFor(photo){
+				$("section > header").html(templates.photo_information(photo));
+				bindEventsToLike();
+				bindEventsToFavorite();
+		}
+
+		function getCommentsFor(id) {
+			$.ajax({
+				url: "/comments?photo_id=" + id,
+				success: function(json){
+					$("#comments ul").html(templates.comments({comments: json}))
+				}	
+			})
+		};
+
+		var slide_show = {
+			loadSlides: function(){
+				$.ajax({
+					url: "/photos",
+					success: function(json){
+						photos = json;
+						$("#slides").append(templates.photos({photos: photos}));
+						getPhotoInformationFor(photos[0]);
+						getCommentsFor(photos[0].id);
+					}
+				})
+			},
+			next: function(e){
+				e.preventDefault();
+				var $current = $('figure:visible');
+				var $next = $current.next();
+
+				if (!$next.is("figure")){
+					$next = $("figure:first-of-type");
+				}
+
+				var photo_id = +$next.attr("data-id");
+				var nextPhoto = photos[photo_id-1];
+
+				getPhotoInformationFor(nextPhoto);
+				getCommentsFor(photo_id);
+
+				$next.stop().fadeIn(500);
+				$current.stop().fadeOut(500);
+				console.log("current: ", $current.attr("data-id"))
+				console.log("next: ", photo_id)
+				
+			},
+			prev: function(e){
+				e.preventDefault();
+				var $current = $("figure:visible");
+				var $prev = $current.prev();
+			
+
+				if(!$prev.is("figure")){
+					$prev = $("figure:last-of-type");
+				}
+
+				var photo_id = +$prev.attr("data-id");
+				var previousPhoto = photos[photo_id-1];
+
+				getPhotoInformationFor(previousPhoto);
+				getCommentsFor(photo_id);
+
+				$prev.stop().fadeIn(500);
+				$current.stop().fadeOut(500);
+			}
+		};
+
+
+		return slide_show;
+	}
+
+
+
+	//-----
+
+	var slide_show = createSlideShow();
+	slide_show.loadSlides();
+	$(".next").on("click", slide_show.next);
+	$(".prev").on("click", slide_show.prev);
 
 	$("#comments").on("submit", "form", function(e){
 		e.preventDefault();
@@ -27,57 +113,6 @@ $(function(){
 		})
 	});
 
-
-	$.ajax({
-		url: "/photos",
-		success: function(json){
-			photos = json;
-			$("#slides").append(templates.photos({photos: photos}));
-			getPhotoInformationFor(photos[0]);
-			getCommentsFor(photos[0].id);
-
-
-		}
-	})
-
-	$(".next").on("click", function(e){
-		e.preventDefault();
-		var $current = $('figure:visible');
-		var $next = $current.next();
-
-		if (!$next.is("figure")){
-			$next = $("figure:first-of-type");
-		}
-
-		var photo_id = +$next.attr("data-id");
-		var nextPhoto = photos[photo_id-1];
-
-		getPhotoInformationFor(nextPhoto);
-		getCommentsFor(photo_id);
-
-		$next.stop().fadeIn(500);
-		$current.stop().fadeOut(500);
-	});
-
-	$(".prev").on("click", function(e){
-		e.preventDefault();
-		var $current = $("figure:visible");
-		var $prev = $current.prev();
-	
-
-		if(!$prev.is("figure")){
-			$prev = $("figure:last-of-type");
-		}
-
-		var photo_id = +$prev.attr("data-id");
-		var previousPhoto = photos[photo_id-1];
-
-		getPhotoInformationFor(previousPhoto);
-		getCommentsFor(photo_id);
-
-		$prev.stop().fadeIn(500);
-		$current.stop().fadeOut(500);
-	});
 
 
 	function bindEventsToLike(){
@@ -109,23 +144,6 @@ $(function(){
 				}
 			})
 		})
-	}
-
-
-	function getPhotoInformationFor(photo){
-		$("section > header").html(templates.photo_information(photo));
-		bindEventsToLike();
-		bindEventsToFavorite();
-	};
-
-	function getCommentsFor(id) {
-		$.ajax({
-			url: "/comments?photo_id=" + id,
-			success: function(json){
-				$("#comments ul").html(templates.comments({comments: json}))
-			}
-		})
-
 	}
 
 });
